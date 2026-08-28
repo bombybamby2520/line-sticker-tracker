@@ -1,7 +1,7 @@
 import json
 import re
 import time
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import requests
 from bs4 import BeautifulSoup
 
@@ -21,7 +21,6 @@ def fetch_ranks():
     found_ranks = {s["id"]: None for s in MY_STICKERS}
     current_overall_rank = 1
 
-    # ใช้ Session เพื่อรักษา狀態 Cookie เหมือนเบราว์เซอร์จริง
     session = requests.Session()
     headers = {
         "User-Agent": (
@@ -29,10 +28,14 @@ def fetch_ranks():
             "AppleWebKit/537.36 (KHTML, like Gecko) "
             "Chrome/128.0.0.0 Safari/537.36"
         ),
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept": (
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
+        ),
         "Accept-Language": "th-TH,th;q=0.9,en-US;q=0.8,en;q=0.7",
         "Cache-Control": "max-age=0",
-        "Sec-Ch-Ua": '"Chromium";v="128", "Not=A?Brand";v="24", "Google Chrome";v="128"',
+        "Sec-Ch-Ua": (
+            '"Chromium";v="128", "Not=A?Brand";v="24", "Google Chrome";v="128"'
+        ),
         "Sec-Ch-Ua-Mobile": "?0",
         "Sec-Ch-Ua-Platform": '"Windows"',
         "Sec-Fetch-Dest": "document",
@@ -42,7 +45,7 @@ def fetch_ranks():
         "Upgrade-Insecure-Requests": "1",
     }
 
-    for page in range(1, 11):  # วนลูปตรวจ 10 หน้าแรก
+    for page in range(1, 11):
         url = f"{BASE_URL}&page={page}"
 
         try:
@@ -54,8 +57,9 @@ def fetch_ranks():
 
             soup = BeautifulSoup(res.text, "html.parser")
 
-            # ดึงลิงก์สติกเกอร์ทั้งหมดในหน้า
-            links = soup.find_all("a", href=re.compile(r"/stickershop/product/"))
+            links = soup.find_all(
+                "a", href=re.compile(r"/stickershop/product/")
+            )
 
             page_ids = []
             for a in links:
@@ -63,7 +67,6 @@ def fetch_ranks():
                 match = re.search(r"/product/(\d+)", href)
                 if match:
                     sid = match.group(1)
-                    # ป้องกันการเก็บ ID ซ้ำในกรอบเดียวกัน
                     if not page_ids or page_ids[-1] != sid:
                         page_ids.append(sid)
 
@@ -80,7 +83,6 @@ def fetch_ranks():
             if all(r is not None for r in found_ranks.values()):
                 break
 
-            # หน่วงเวลาสั้นๆ ป้องกันระบบจำว่าเป็นบอทยิงถี่เกินไป
             time.sleep(1)
 
         except Exception as e:
@@ -92,7 +94,18 @@ def fetch_ranks():
 def update_data():
     print("กำลังเริ่มกระบวนการตรวจสอบอันดับสติกเกอร์...")
     ranks = fetch_ranks()
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    # ปรับเวลาให้เป็นเวลาไทย (UTC+7) เสมอแม้รันบน GitHub Actions
+    tz_th = timezone(timedelta(hours=7))
+    timestamp = datetime.now(tz_th).strftime("%Y-%m-%d %H:%M")
+
+    # ป้องกันการบันทึกหากดึงอันดับไม่สำเร็จเลยสักตัว (ป้องกันหน้าเว็บล่มขึ้น Unranked)
+    has_valid_rank = any(rank is not None for rank in ranks.values())
+    if not has_valid_rank:
+        print(
+            "⚠️ ไม่พบข้อมูลอันดับในรอบนี้ (อาจติด Anti-Bot) - ยกเลิกการบันทึกเพื่อป้องกันข้อมูลเสีย"
+        )
+        return
 
     print("\nผลการตรวจสอบอันดับประจำรอบ:")
     for sid, rank in ranks.items():
