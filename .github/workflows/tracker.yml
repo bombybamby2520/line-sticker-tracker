@@ -6,7 +6,7 @@ on:
   workflow_dispatch: # ปุ่มกดสั่งรันด้วยมือบน GitHub
 
 permissions:
-  contents: write # ให้สิทธิ์เขียนไฟล์ลง Repository ชัดเจน
+  contents: write # ให้สิทธิ์เขียนไฟล์ลง Repository
 
 jobs:
   build:
