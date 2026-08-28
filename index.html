@@ -11,7 +11,6 @@
     h2 { color: #1c1e21; font-size: 24px; margin-bottom: 20px; text-align: center; }
     .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 15px; margin-bottom: 25px; }
     
-    /* ปรับแต่งสไตล์การ์ด */
     .card { 
       background: white; 
       padding: 16px; 
@@ -36,7 +35,6 @@
     .card .rank { font-size: 28px; font-weight: bold; color: #06C755; }
     .card .id { font-size: 11px; color: #888; margin-top: 4px; }
     
-    /* สไตล์ป้ายบอกการเปลี่ยนแปลงอันดับ Badge */
     .badge {
       font-size: 12px;
       font-weight: bold;
@@ -45,10 +43,10 @@
       display: inline-flex;
       align-items: center;
     }
-    .badge.up { background: #e8f5e9; color: #2e7d32; }       /* สีเขียว อันดับขึ้น */
-    .badge.down { background: #ffebee; color: #c62828; }     /* สีแดง อันดับตก */
-    .badge.same { background: #f5f5f5; color: #616161; }     /* สีเทา เท่าเดิม */
-    .badge.new { background: #e3f2fd; color: #1565c0; }      /* สีฟ้า NEW */
+    .badge.up { background: #e8f5e9; color: #2e7d32; }
+    .badge.down { background: #ffebee; color: #c62828; }
+    .badge.same { background: #f5f5f5; color: #616161; }
+    .badge.new { background: #e3f2fd; color: #1565c0; }
 
     .chart-box { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
     .last-update { text-align: center; color: #777; font-size: 13px; margin-top: 15px; }
@@ -67,28 +65,34 @@
   <script>
     async function loadData() {
       try {
-        const res = await fetch('data.json');
+        // เพิ่ม Timestamp เพื่อบังคับล้าง Cache บน GitHub Pages
+        const res = await fetch('data.json?t=' + new Date().getTime());
         const data = await res.json();
         
         if (!data.history || data.history.length === 0) return;
 
-        const latestEntry = data.history[data.history.length - 1];
-        // ดึงข้อมูลรอบก่อนหน้า (ถ้ามี)
-        const prevEntry = data.history.length > 1 ? data.history[data.history.length - 2] : null;
+        // กรองเฉพาะรอบที่มีข้อมูลอันดับจริง (ไม่ใช่ null ทั้งหมด)
+        const validHistory = data.history.filter(h => 
+          Object.values(h.ranks).some(val => val !== null)
+        );
+
+        // หากไม่มีรอบที่มีข้อมูลเลย ให้สลับไปใช้รอบล่าสุดตามปกติ
+        const historyToUse = validHistory.length > 0 ? validHistory : data.history;
+
+        const latestEntry = historyToUse[historyToUse.length - 1];
+        const prevEntry = historyToUse.length > 1 ? historyToUse[historyToUse.length - 2] : null;
 
         const cardsDiv = document.getElementById('cards');
         cardsDiv.innerHTML = '';
         
         document.getElementById('updateTime').innerText = `อัปเดตล่าสุดเมื่อ: ${latestEntry.timestamp}`;
         
-        // จัดเรียงสติกเกอร์ตามอันดับ (อันดับน้อยขึ้นก่อน)
         const sortedStickers = [...data.stickers].sort((a, b) => {
           const rankA = latestEntry.ranks[a.id] ?? 9999;
           const rankB = latestEntry.ranks[b.id] ?? 9999;
           return rankA - rankB;
         });
 
-        // แสดงผลการ์ดพร้อมคำนวณส่วนต่างอันดับ
         sortedStickers.forEach(s => {
           const currentRank = latestEntry.ranks[s.id];
           const prevRank = prevEntry ? prevEntry.ranks[s.id] : null;
@@ -97,7 +101,7 @@
 
           if (currentRank) {
             if (prevRank) {
-              const diff = prevRank - currentRank; // ถ้าผลเป็นบวก แปลว่าอันดับดีขึ้น (ตัวเลขน้อยลง)
+              const diff = prevRank - currentRank;
               if (diff > 0) {
                 badgeHTML = `<span class="badge up">↑ ${diff}</span>`;
               } else if (diff < 0) {
@@ -128,14 +132,13 @@
           cardsDiv.appendChild(card);
         });
 
-        // วาดกราฟย้อนหลัง
-        const labels = data.history.map(h => h.timestamp);
-        const colors = ['#06C755', '#FF5722', '#2196F3', '#9C27B0', '#FFC107'];
+        const labels = historyToUse.map(h => h.timestamp);
+        const colors = ['#06C755', '#FF5722', '#2196F3', '#9C27B0', '#FFC107', '#E91E63'];
         
         const datasets = data.stickers.map((s, index) => {
           return {
             label: s.name,
-            data: data.history.map(h => h.ranks[s.id] || null),
+            data: historyToUse.map(h => h.ranks[s.id] || null),
             borderColor: colors[index % colors.length],
             backgroundColor: colors[index % colors.length],
             fill: false,
