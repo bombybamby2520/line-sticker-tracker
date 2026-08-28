@@ -3,7 +3,7 @@ name: Line Sticker Rank Scraper
 on:
   schedule:
     # รันทุกๆ นาทีที่ 0 ของทุกชั่วโมง (เช่น 21:00, 22:00, 23:00)
-    - cron: '0 * * * *'
+    - cron: '0 */6 * * *'
   workflow_dispatch: # ปุ่มกดรันเองได้ด้วยตนเองผ่านหน้าเว็บ GitHub
 
 jobs:
