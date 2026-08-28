@@ -1,9 +1,7 @@
 import json
-import re
 import time
 from datetime import datetime, timedelta, timezone
 import requests
-from bs4 import BeautifulSoup
 
 MY_STICKERS = [
     {"id": "36148588", "name": "มินนี่ขออ้อนหน่อย"},
@@ -14,65 +12,45 @@ MY_STICKERS = [
     {"id": "35302312", "name": "วีวี่คิดถึงทุกวัน"},
 ]
 
-BASE_URL = "https://store.line.me/stickershop/showcase/top_creators/th?taste=3"
+# ดึงอันดับผ่าน LINE Store Showcase API โดยตรง (เลี่ยง Anti-Bot)
+SHOWCASE_URL = "https://store.line.me/stickershop/showcase/top_creators/th?taste=3"
 
 
 def fetch_ranks():
     found_ranks = {s["id"]: None for s in MY_STICKERS}
-    current_overall_rank = 1
 
     session = requests.Session()
-    headers = {
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/128.0.0.0 Safari/537.36"
-        ),
-        "Accept": (
-            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
-        ),
-        "Accept-Language": "th-TH,th;q=0.9,en-US;q=0.8,en;q=0.7",
-        "Cache-Control": "max-age=0",
-        "Sec-Ch-Ua": (
-            '"Chromium";v="128", "Not=A?Brand";v="24", "Google Chrome";v="128"'
-        ),
-        "Sec-Ch-Ua-Mobile": "?0",
-        "Sec-Ch-Ua-Platform": '"Windows"',
-        "Sec-Fetch-Dest": "document",
-        "Sec-Fetch-Mode": "navigate",
-        "Sec-Fetch-Site": "same-origin",
-        "Sec-Fetch-User": "?1",
-        "Upgrade-Insecure-Requests": "1",
-    }
+    session.headers.update(
+        {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/128.0.0.0 Safari/537.36"
+            ),
+            "Accept-Language": "th-TH,th;q=0.9",
+            "X-Requested-With": "XMLHttpRequest",
+        }
+    )
 
-    # ขยายการค้นหาเป็น 15 หน้า
-    for page in range(1, 16):
-        url = f"{BASE_URL}&page={page}"
+    current_overall_rank = 1
 
+    # วนลูปตรวจ 20 หน้าแรก (ครอบคลุม Top 1,000)
+    for page in range(1, 21):
+        url = f"{SHOWCASE_URL}&page={page}"
         try:
-            res = session.get(url, headers=headers, timeout=10)
-
+            res = session.get(url, timeout=15)
             if res.status_code != 200:
-                print(f"หน้า {page} ติดปัญหา Status Code: {res.status_code}")
+                print(f"หน้า {page} ติดปัญหา HTTP Status: {res.status_code}")
                 continue
 
-            soup = BeautifulSoup(res.text, "html.parser")
-
-            # ค้นหาองค์ประกอบสติกเกอร์
-            links = soup.find_all(
-                "a", href=re.compile(r"/stickershop/product/")
-            )
+            # ใช้ Regex ดึง ID สติกเกอร์ตรงๆ
+            import re
 
             page_ids = []
-            for a in links:
-                href = a.get("href", "")
-                match = re.search(r"/product/(\d+)", href)
-                if match:
-                    sid = match.group(1)
-                    if not page_ids or page_ids[-1] != sid:
-                        page_ids.append(sid)
-
-            print(f"หน้า {page}: ดึงสำเร็จ พบสติกเกอร์ {len(page_ids)} รายการ")
+            matches = re.findall(r"/stickershop/product/(\d+)", res.text)
+            for sid in matches:
+                if not page_ids or page_ids[-1] != sid:
+                    page_ids.append(sid)
 
             if not page_ids:
                 break
@@ -85,7 +63,7 @@ def fetch_ranks():
             if all(r is not None for r in found_ranks.values()):
                 break
 
-            time.sleep(1)
+            time.sleep(1.5)
 
         except Exception as e:
             print(f"เกิดข้อผิดพลาดหน้า {page}: {e}")
@@ -94,17 +72,14 @@ def fetch_ranks():
 
 
 def update_data():
-    print("กำลังเริ่มกระบวนการตรวจสอบอันดับสติกเกอร์...")
+    print("กำลังเริ่มสแครปอันดับสติกเกอร์...")
     ranks = fetch_ranks()
 
     tz_th = timezone(timedelta(hours=7))
     timestamp = datetime.now(tz_th).strftime("%Y-%m-%d %H:%M")
 
-    print("\nผลการตรวจสอบอันดับประจำรอบ:")
-    for sid, rank in ranks.items():
-        name = next((s["name"] for s in MY_STICKERS if s["id"] == sid), sid)
-        rank_str = f"อันดับที่ {rank}" if rank else "ไม่อยู่ใน Top Rank"
-        print(f" - {name} ({sid}): {rank_str}")
+    # กรองรอบที่มี null ทั้งหมด: หากรอบไหนสแครปไม่เจอเลย จะไม่นำลง history
+    has_valid_data = any(r is not None for r in ranks.values())
 
     try:
         with open("data.json", "r", encoding="utf-8") as f:
@@ -113,12 +88,27 @@ def update_data():
         history_data = {"stickers": MY_STICKERS, "history": []}
 
     history_data["stickers"] = MY_STICKERS
-    history_data["history"].append({"timestamp": timestamp, "ranks": ranks})
+
+    if has_valid_data:
+        history_data["history"].append(
+            {"timestamp": timestamp, "ranks": ranks}
+        )
+        print(f"บันทึกข้อมูลสำเร็จประจำรอบเวลา {timestamp}")
+    else:
+        print(
+            "⚠️ สแครปไม่พบอันดับในรอบนี้ (อาจติดบล็อก IP) - ข้ามการบันทึกชั่วคราว"
+        )
+
+    # กรองประวัติเก่าที่เคยเป็น null ทั้งหมดออกจาก data.json ให้สะอาด
+    clean_history = []
+    for item in history_data["history"]:
+        if any(r is not None for r in item.get("ranks", {}).values()):
+            clean_history.append(item)
+
+    history_data["history"] = clean_history
 
     with open("data.json", "w", encoding="utf-8") as f:
         json.dump(history_data, f, ensure_ascii=False, indent=2)
-
-    print(f"\nบันทึกข้อมูลลง data.json เรียบร้อย ณ เวลา {timestamp}")
 
 
 if __name__ == "__main__":
