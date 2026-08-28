@@ -45,7 +45,8 @@ def fetch_ranks():
         "Upgrade-Insecure-Requests": "1",
     }
 
-    for page in range(1, 11):
+    # ขยายการค้นหาเป็น 15 หน้า
+    for page in range(1, 16):
         url = f"{BASE_URL}&page={page}"
 
         try:
@@ -57,6 +58,7 @@ def fetch_ranks():
 
             soup = BeautifulSoup(res.text, "html.parser")
 
+            # ค้นหาองค์ประกอบสติกเกอร์
             links = soup.find_all(
                 "a", href=re.compile(r"/stickershop/product/")
             )
@@ -95,17 +97,8 @@ def update_data():
     print("กำลังเริ่มกระบวนการตรวจสอบอันดับสติกเกอร์...")
     ranks = fetch_ranks()
 
-    # ปรับเวลาให้เป็นเวลาไทย (UTC+7) เสมอแม้รันบน GitHub Actions
     tz_th = timezone(timedelta(hours=7))
     timestamp = datetime.now(tz_th).strftime("%Y-%m-%d %H:%M")
-
-    # ป้องกันการบันทึกหากดึงอันดับไม่สำเร็จเลยสักตัว (ป้องกันหน้าเว็บล่มขึ้น Unranked)
-    has_valid_rank = any(rank is not None for rank in ranks.values())
-    if not has_valid_rank:
-        print(
-            "⚠️ ไม่พบข้อมูลอันดับในรอบนี้ (อาจติด Anti-Bot) - ยกเลิกการบันทึกเพื่อป้องกันข้อมูลเสีย"
-        )
-        return
 
     print("\nผลการตรวจสอบอันดับประจำรอบ:")
     for sid, rank in ranks.items():
