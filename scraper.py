@@ -1,4 +1,5 @@
 import json
+import random  # เพิ่มเข้ามาสำหรับสุ่มเลือก User-Agent
 import time
 from datetime import datetime, timedelta, timezone
 import requests
@@ -12,8 +13,21 @@ MY_STICKERS = [
     {"id": "35302312", "name": "วีวี่คิดถึงทุกวัน"},
 ]
 
-# ดึงอันดับผ่าน LINE Store Showcase API โดยตรง (เลี่ยง Anti-Bot)
 SHOWCASE_URL = "https://store.line.me/stickershop/showcase/top_creators/th?taste=3"
+
+# รายชื่อ User-Agent หลายตัว จำลองว่ามาจากเบราว์เซอร์/อุปกรณ์ต่างกัน
+# เหตุผล: โค้ดเดิมใช้ User-Agent เดียวคงที่ทุกครั้งที่รัน (Chrome/128 ตัวเดิมตลอด)
+# ซึ่งเป็น pattern ที่ระบบ anti-bot จับได้ง่าย เพราะคนจริงมักใช้เบราว์เซอร์/เวอร์ชันหลากหลาย
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 Edg/126.0.0.0",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+]
 
 
 def fetch_ranks():
@@ -22,11 +36,8 @@ def fetch_ranks():
     session = requests.Session()
     session.headers.update(
         {
-            "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/128.0.0.0 Safari/537.36"
-            ),
+            # สุ่มเลือก User-Agent 1 ตัวจากลิสต์ด้านบน ทุกครั้งที่ scraper รันใหม่
+            "User-Agent": random.choice(USER_AGENTS),
             "Accept-Language": "th-TH,th;q=0.9",
             "X-Requested-With": "XMLHttpRequest",
         }
@@ -34,7 +45,6 @@ def fetch_ranks():
 
     current_overall_rank = 1
 
-    # วนลูปตรวจ 20 หน้าแรก (ครอบคลุม Top 1,000)
     for page in range(1, 21):
         url = f"{SHOWCASE_URL}&page={page}"
         try:
@@ -43,7 +53,6 @@ def fetch_ranks():
                 print(f"หน้า {page} ติดปัญหา HTTP Status: {res.status_code}")
                 continue
 
-            # ใช้ Regex ดึง ID สติกเกอร์ตรงๆ
             import re
 
             page_ids = []
@@ -63,7 +72,10 @@ def fetch_ranks():
             if all(r is not None for r in found_ranks.values()):
                 break
 
-            time.sleep(1.5)
+            # สุ่มเวลาพักระหว่างหน้า (เดิม 1.5 วินาทีตายตัว)
+            # เหตุผล: การรอเวลาเท่าเดิมทุกครั้งก็เป็น pattern แบบบอทเหมือนกัน
+            # สุ่มช่วง 1.0-2.5 วินาที ทำให้จังหวะการโหลดแต่ละหน้าดูเป็นธรรมชาติขึ้น
+            time.sleep(random.uniform(1.0, 2.5))
 
         except Exception as e:
             print(f"เกิดข้อผิดพลาดหน้า {page}: {e}")
@@ -78,7 +90,6 @@ def update_data():
     tz_th = timezone(timedelta(hours=7))
     timestamp = datetime.now(tz_th).strftime("%Y-%m-%d %H:%M")
 
-    # กรองรอบที่มี null ทั้งหมด: หากรอบไหนสแครปไม่เจอเลย จะไม่นำลง history
     has_valid_data = any(r is not None for r in ranks.values())
 
     try:
@@ -99,7 +110,6 @@ def update_data():
             "⚠️ สแครปไม่พบอันดับในรอบนี้ (อาจติดบล็อก IP) - ข้ามการบันทึกชั่วคราว"
         )
 
-    # กรองประวัติเก่าที่เคยเป็น null ทั้งหมดออกจาก data.json ให้สะอาด
     clean_history = []
     for item in history_data["history"]:
         if any(r is not None for r in item.get("ranks", {}).values()):
