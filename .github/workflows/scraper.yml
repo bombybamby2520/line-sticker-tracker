@@ -1,12 +1,7 @@
 name: Line Sticker Rank Scraper
 
 on:
-  schedule:
-    # เปลี่ยนจากทุก 6 ชม. เป็นทุก 8 ชม. + รันที่นาที 17 (ไม่ใช่นาที 0)
-    # เหตุผล: บอทส่วนใหญ่มักตั้งเวลาตรงเป๊ะ (00:00, 06:00 ...) 
-    # การขยับเวลาเล็กน้อยทำให้ pattern การเข้าเว็บดูเป็นธรรมชาติกว่า ไม่ใช่ตรงเป๊ะทุกรอบ
-    - cron: '17 */8 * * *'
-  workflow_dispatch: # ปุ่มกดรันเองได้ด้วยตนเองผ่านหน้าเว็บ GitHub
+  workflow_dispatch: # ปุ่มกดรันเองได้ด้วยตนเองผ่านหน้าเว็บ GitHub (ปิด schedule อัตโนมัติแล้ว ใช้ PC เป็นหลักแทน)
 
 jobs:
   scrape-and-commit:
@@ -26,10 +21,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install requests beautifulsoup4
 
-    # STEP ใหม่: สุ่มหน่วงเวลาก่อนเริ่ม scrape จริง
-    # เหตุผล: ถ้า workflow เริ่มทำงานแล้วยิง request ทันทีทุกครั้ง เวลาที่ request มาถึง
-    # ปลายทางจะ "ตรงเป๊ะ" กับเวลา cron เสมอ ซึ่งเป็นสัญญาณที่บอทมักมี (คนจริงไม่กดเข้าเว็บตรงวินาทีเป๊ะๆ)
-    # RANDOM คือตัวแปรของ bash ที่สุ่มเลข 0-32767 มาให้ เราหาร mod 300 จะได้เลข 0-299 (วินาที)
     - name: Random delay before scraping
       run: sleep $((RANDOM % 300))
 
@@ -41,5 +32,4 @@ jobs:
         git config --global user.name "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
         git add data.json
-        # เช็กว่า data.json มีการเปลี่ยนแปลงหรือไม่ ก่อน commit
         git diff --quiet && git diff --staged --quiet || (git commit -m "auto: update sticker ranks [$(date -u +'%Y-%m-%d %H:%M UTC')]" && git push)
