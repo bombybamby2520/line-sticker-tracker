@@ -34,6 +34,5 @@ jobs:
         git config --global user.name "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
         git add data.json
-        # บังคับ commit แต่ถ้าไม่มีงานใหม่ ให้ exit 0 เพื่อไม่ให้ขึ้น Failed
         git commit -m "auto: update sticker ranks [$(date -u +'%Y-%m-%d %H:%M UTC')]" || exit 0
         git push
