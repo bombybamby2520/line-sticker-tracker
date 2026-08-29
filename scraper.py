@@ -1,5 +1,5 @@
 import json
-import random  # เพิ่มเข้ามาสำหรับสุ่มเลือก User-Agent
+import random
 import time
 from datetime import datetime, timedelta, timezone
 import requests
@@ -15,9 +15,6 @@ MY_STICKERS = [
 
 SHOWCASE_URL = "https://store.line.me/stickershop/showcase/top_creators/th?taste=3"
 
-# รายชื่อ User-Agent หลายตัว จำลองว่ามาจากเบราว์เซอร์/อุปกรณ์ต่างกัน
-# เหตุผล: โค้ดเดิมใช้ User-Agent เดียวคงที่ทุกครั้งที่รัน (Chrome/128 ตัวเดิมตลอด)
-# ซึ่งเป็น pattern ที่ระบบ anti-bot จับได้ง่าย เพราะคนจริงมักใช้เบราว์เซอร์/เวอร์ชันหลากหลาย
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
@@ -36,7 +33,6 @@ def fetch_ranks():
     session = requests.Session()
     session.headers.update(
         {
-            # สุ่มเลือก User-Agent 1 ตัวจากลิสต์ด้านบน ทุกครั้งที่ scraper รันใหม่
             "User-Agent": random.choice(USER_AGENTS),
             "Accept-Language": "th-TH,th;q=0.9",
             "X-Requested-With": "XMLHttpRequest",
@@ -50,6 +46,8 @@ def fetch_ranks():
         try:
             res = session.get(url, timeout=15)
             if res.status_code != 200:
+                # ถ้า LINE บล็อกจริง ส่วนใหญ่จะเจอ status พวกนี้: 403 (ห้ามเข้า),
+                # 429 (ยิงถี่เกินไป), 503 (เซิร์ฟเวอร์ปฏิเสธชั่วคราว)
                 print(f"หน้า {page} ติดปัญหา HTTP Status: {res.status_code}")
                 continue
 
@@ -62,6 +60,12 @@ def fetch_ranks():
                     page_ids.append(sid)
 
             if not page_ids:
+                # DEBUG: ถ้า status เป็น 200 (ปกติ) แต่หา ID ไม่เจอเลย
+                # แปลว่าไม่ใช่โดนบล็อกแบบ HTTP error แต่หน้าเว็บอาจเป็นอย่างอื่น
+                # เช่น หน้า captcha, หน้าเปล่า, หรือ LINE เปลี่ยนโครงสร้าง HTML
+                # การพิมพ์ status + ความยาว + ตัวอย่างข้อความ ช่วยให้รู้ว่าจริงๆ ได้อะไรกลับมา
+                print(f"[DEBUG] หน้า {page}: status={res.status_code}, ความยาว HTML={len(res.text)}")
+                print(f"[DEBUG] ตัวอย่าง HTML 300 ตัวแรก: {res.text[:300]}")
                 break
 
             for sid in page_ids:
@@ -72,9 +76,6 @@ def fetch_ranks():
             if all(r is not None for r in found_ranks.values()):
                 break
 
-            # สุ่มเวลาพักระหว่างหน้า (เดิม 1.5 วินาทีตายตัว)
-            # เหตุผล: การรอเวลาเท่าเดิมทุกครั้งก็เป็น pattern แบบบอทเหมือนกัน
-            # สุ่มช่วง 1.0-2.5 วินาที ทำให้จังหวะการโหลดแต่ละหน้าดูเป็นธรรมชาติขึ้น
             time.sleep(random.uniform(1.0, 2.5))
 
         except Exception as e:
