@@ -2,9 +2,13 @@ name: Line Sticker Rank Scraper
 
 on:
   schedule:
-    # รันทุกๆ นาทีที่ 0 ของทุกชั่วโมง (เช่น 21:00, 22:00, 23:00)
+    # รันทุกๆ 6 ชั่วโมง (นาทีที่ 0 ของชั่วโมงที่ 0, 6, 12, 18 UTC)
     - cron: '0 */6 * * *'
-  workflow_dispatch: # ปุ่มกดรันเองได้ด้วยตนเองผ่านหน้าเว็บ GitHub
+  workflow_dispatch: # ปุ่มกดรันด้วยตนเองผ่านหน้าเว็บ GitHub
+
+# ให้สิทธิ์ Bot บันทึกและ Push ไฟล์กลับเข้า Repository
+permissions:
+  contents: write
 
 jobs:
   scrape-and-commit:
@@ -32,5 +36,5 @@ jobs:
         git config --global user.name "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
         git add data.json
-        # เช็กว่า data.json มีการเปลี่ยนแปลงหรือไม่ ก่อน commit
-        git diff --quiet && git diff --staged --quiet || (git commit -m "auto: update sticker ranks [$(date -u +'%Y-%m-%d %H:%M UTC')]" && git push)
+        # เช็กว่ามีความเปลี่ยนแปลงหรือไม่ ถ้าไม่มีให้ exit 0 ข้ามไปแบบไม่ขึ้น Error สีแดง
+        git diff --staged --quiet || (git commit -m "auto: update sticker ranks [$(date -u +'%Y-%m-%d %H:%M UTC')]" && git push)
