@@ -6,7 +6,7 @@ on:
     - cron: '0 */6 * * *'
   workflow_dispatch: # ปุ่มกดรันด้วยตนเองผ่านหน้าเว็บ GitHub
 
-# ให้สิทธิ์ Bot บันทึกและ Push ไฟล์กลับเข้า Repository
+# ให้สิทธิ์ Bot บันทึกและ Push ไฟล์กลับเข้า Repository 
 permissions:
   contents: write
 
