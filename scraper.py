@@ -1,5 +1,6 @@
 import json
 import random
+import re
 import time
 from datetime import datetime, timedelta, timezone
 import requests
@@ -27,6 +28,8 @@ USER_AGENTS = [
     "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
 ]
 
+STICKER_ID_PATTERN = re.compile(r"/stickershop/product/(\d+)")
+
 
 def fetch_ranks():
     found_ranks = {s["id"]: None for s in MY_STICKERS}
@@ -47,26 +50,23 @@ def fetch_ranks():
         try:
             res = session.get(url, timeout=15)
             if res.status_code != 200:
-                # ถ้า LINE บล็อกจริง ส่วนใหญ่จะเจอ status พวกนี้: 403 (ห้ามเข้า),
-                # 429 (ยิงถี่เกินไป), 503 (เซิร์ฟเวอร์ปฏิเสธชั่วคราว)
-                print(f"หน้า {page} ติดปัญหา HTTP Status: {res.status_code}")
+                print(
+                    f"Page {page} HTTP Error: {res.status_code}",
+                    flush=True,
+                )
                 continue
 
-            import re
-
+            matches = STICKER_ID_PATTERN.findall(res.text)
             page_ids = []
-            matches = re.findall(r"/stickershop/product/(\d+)", res.text)
             for sid in matches:
                 if not page_ids or page_ids[-1] != sid:
                     page_ids.append(sid)
 
             if not page_ids:
-                # DEBUG: ถ้า status เป็น 200 (ปกติ) แต่หา ID ไม่เจอเลย
-                # แปลว่าไม่ใช่โดนบล็อกแบบ HTTP error แต่หน้าเว็บอาจเป็นอย่างอื่น
-                # เช่น หน้า captcha, หน้าเปล่า, หรือ LINE เปลี่ยนโครงสร้าง HTML
-                # การพิมพ์ status + ความยาว + ตัวอย่างข้อความ ช่วยให้รู้ว่าจริงๆ ได้อะไรกลับมา
-                print(f"[DEBUG] หน้า {page}: status={res.status_code}, ความยาว HTML={len(res.text)}")
-                print(f"[DEBUG] ตัวอย่าง HTML 300 ตัวแรก: {res.text[:300]}")
+                print(
+                    f"[DEBUG] Page {page}: status={res.status_code}, HTML length={len(res.text)}",
+                    flush=True,
+                )
                 break
 
             for sid in page_ids:
@@ -80,13 +80,14 @@ def fetch_ranks():
             time.sleep(random.uniform(1.0, 2.5))
 
         except Exception as e:
-            print(f"เกิดข้อผิดพลาดหน้า {page}: {e}")
+            print(f"Error on page {page}: {e}", flush=True)
 
     return found_ranks
 
 
 def update_data():
-    print("กำลังเริ่มสแครปอันดับสติกเกอร์...")
+    print("Fetching rankings from LINE Store...", flush=True)
+
     ranks = fetch_ranks()
 
     tz_th = timezone(timedelta(hours=7))
@@ -103,14 +104,10 @@ def update_data():
     history_data["stickers"] = MY_STICKERS
 
     if has_valid_data:
-        history_data["history"].append(
-            {"timestamp": timestamp, "ranks": ranks}
-        )
-        print(f"บันทึกข้อมูลสำเร็จประจำรอบเวลา {timestamp}")
+        history_data["history"].append({"timestamp": timestamp, "ranks": ranks})
+        print(f"Successfully updated data ({timestamp})", flush=True)
     else:
-        print(
-            "⚠️ สแครปไม่พบอันดับในรอบนี้ (อาจติดบล็อก IP) - ข้ามการบันทึกชั่วคราว"
-        )
+        print("No ranks found in this round (skipped saving)", flush=True)
 
     clean_history = []
     for item in history_data["history"]:
