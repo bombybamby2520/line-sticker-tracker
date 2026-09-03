@@ -13,6 +13,7 @@ MY_STICKERS = [
     {"id": "35827838", "name": "ถ้วยฟูวันที่คิดถึง (ดุ๊กดิ๊ก)"},
     {"id": "35302312", "name": "วีวี่คิดถึงทุกวัน"},
     {"id": "35319835", "name": "ถ้วยฟูวินเทจเกิร์ล"},
+    {"id": "35522153", "name": "คะน้า:สโลวไลฟ์"},
 ]
 
 SHOWCASE_URL = "https://store.line.me/stickershop/showcase/top_creators/th?taste=3"
