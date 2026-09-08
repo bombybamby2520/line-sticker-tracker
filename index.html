@@ -84,6 +84,12 @@
         width: 100%;
       }
 
+      .spark-box canvas {
+        width: 100% !important;
+        height: 36px !important;
+        display: block;
+      }
+
       .badge {
         font-size: 12px;
         font-weight: bold;
@@ -254,14 +260,14 @@
                     fill: true,
                     tension: 0.3,
                     pointRadius: 0, // ไม่โชว์จุดแต่ละจุด ให้ดูเป็นเส้นแนวโน้มเรียบๆ
-                    borderWidth: 1.5,
+                    borderWidth: 1,
                   },
                 ],
               },
               options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                animation: false, // ปิด animation ตอนวาดกราฟ กันสับสนว่าข้อมูลเปลี่ยนทั้งที่ไม่ได้เปลี่ยน
+                animation: false, // ปิด animation ตอนวาดกราฟ
                 scales: {
                   y: { reverse: true, display: false }, // ซ่อนแกน Y แต่ยังกลับด้าน (อันดับ 1 อยู่บนสุด)
                   x: { display: false }, // ซ่อนแกน X เพราะพื้นที่เล็ก ไม่มีที่พอให้อ่าน label
