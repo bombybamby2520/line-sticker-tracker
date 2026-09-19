@@ -6,6 +6,8 @@ from datetime import datetime, timedelta, timezone
 import requests
 
 MY_STICKERS = [
+    {"id": "36700454", "name": "มาการองขอให้เป็นวันที่ดี (Big)"},
+    {"id": "36710283", "name": "มาการองขอให้เป็นวันที่ดี"},
     {"id": "36699299", "name": "ถ้วยฟูสดใสทุกวัน (DukDik)"},
     {"id": "36673668", "name": "ตังเมน่ารักทุกวัน (Big)"},
     {"id": "36694273", "name": "ตังเมน่ารักทุกวัน"},
