@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 import requests
 
 MY_STICKERS = [
+    {"id": "36884401", "name": "พีนัทสดใสทุกวัน"},
     {"id": "36832250", "name": "บิสกิตสดใสทุกวัน (Big)"},
     {"id": "36808421", "name": "บิสกิตสดใสทุกวัน"},
     {"id": "36801219", "name": "ตังเมน่ารักทุกวัน (DukDik)"},
@@ -31,7 +32,6 @@ MY_STICKERS = [
     {"id": "35319835", "name": "ถ้วยฟูวินเทจเกิร์ล"},
     {"id": "35683711", "name": "วีวี่วันที่สดใส"},
     {"id": "35522153", "name": "คะน้า:สโลวไลฟ์"},
-    {"id": "36148588", "name": "มินนี่ขออ้อนหน่อย"},
 ]
 
 SHOWCASE_URL = "https://store.line.me/stickershop/showcase/top_creators/th?taste=3"
